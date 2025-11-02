@@ -1,8 +1,6 @@
-// lib/screens/malzemeler_page.dart
 import 'package:flutter/material.dart';
-import 'package:collection/collection.dart';
 import 'package:provider/provider.dart';
-import 'package:elde_tarif/providers/malzeme_provider.dart';
+import 'package:elde_tarif/Providers/malzeme_provider.dart';
 import 'package:elde_tarif/models/malzeme.dart';
 
 class MalzemelerPage extends StatefulWidget {
@@ -13,249 +11,337 @@ class MalzemelerPage extends StatefulWidget {
 }
 
 class _MalzemelerPageState extends State<MalzemelerPage> {
-  final Map<String, GlobalKey> _sectionKeys = {};
-  final _scrollController = ScrollController();
+  // Seçili malzemeler (id seti)
+  final Set<int> _seciliMalzemeIdleri = {};
+
+  // Arama alanı için controller
+  final _aramaCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    // Provider'dan malzemeleri yükle
-    Future.microtask(() => context.read<MalzemeProvider>().load());
+    // Sayfa açılınca veriyi yükle
+    Future.microtask(() => context.read<MalzemeProvider>().veriyiYukle());
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _aramaCtrl.dispose();
     super.dispose();
   }
 
-  void _ensureSectionKeys(List<String> headers) {
-    for (final h in headers) {
-      _sectionKeys.putIfAbsent(h, () => GlobalKey());
-    }
-  }
+  // Palette E
+  static const _primary      = Color(0xFF3B82F6); // blue-500
+  static const _primaryDark  = Color(0xFF2563EB); // blue-600
+  static const _surfaceSoft  = Color(0xFFF1F5F9); // slate-50
+  Color get _border    => const Color(0xFFE2E8F0); // slate-200
+  Color get _textMuted => const Color(0xFF64748B); // slate-500
 
-  Future<void> _scrollTo(String header) async {
-    final key = _sectionKeys[header];
-    if (key == null) return;
-    final ctx = key.currentContext;
-    if (ctx == null) return; // ağaçta değilse vazgeç
-    await Scrollable.ensureVisible(
-      ctx,
-      alignment: 0,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
+  // Bir malzemeyi seç/çıkar (toggle)
+  void _malzemeSeciminiDegistir(Malzeme m) {
+    setState(() {
+      if (_seciliMalzemeIdleri.contains(m.id)) {
+        _seciliMalzemeIdleri.remove(m.id);
+      } else {
+        _seciliMalzemeIdleri.add(m.id);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final prov = context.watch<MalzemeProvider>();
+    final p = context.watch<MalzemeProvider>();
 
-    if (prov.loading) {
-      return const SafeArea(child: Center(child: CircularProgressIndicator()));
+    // Yükleniyor / hata durumları
+    if (p.yukleniyor) {
+      return const SafeArea(
+        child: Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
     }
-    if (prov.error != null) {
-      return SafeArea(child: Center(child: Text('Hata: ${prov.error}')));
+    if (p.hata != null) {
+      return SafeArea(
+        child: Scaffold(body: Center(child: Text('Hata: ${p.hata}'))),
+      );
     }
 
-    // Baş harfe göre gruplama
-    final grouped = groupBy<Malzeme, String>(prov.filtered, (m) {
-      final c = (m.ad.isNotEmpty ? m.ad[0] : '#').toUpperCase();
-      final isAlpha = RegExp(r'[A-ZÇĞİÖŞÜ]').hasMatch(c);
-      return isAlpha ? c : '#';
-    });
+    // Tek seçimli tür için mevcut değer (yoksa null)
+    final String? seciliTur = p.seciliTurler.isEmpty ? null : p.seciliTurler.first;
 
-    // Dinamik header listesi
-    final headers = grouped.keys.toList()..sort();
-
-      // ARTIK OLMAYAN harflerin key'lerini temizle → stale key hatalarını önler
-    _sectionKeys.removeWhere((letter, _) => !headers.contains(letter));
-
-    // Eksik key'leri oluştur
-    _ensureSectionKeys(headers);
+    // Filtrelenmiş liste
+    final List<Malzeme> liste = p.filtreliListe;
 
     return SafeArea(
       child: Scaffold(
-        body: Stack(
+        backgroundColor: Colors.white,
+        body: Column(
           children: [
-            CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                SliverAppBar(
-                  pinned: true,
-                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                  elevation: 0,
-                  title: const Text('Malzemeler', style: TextStyle(fontWeight: FontWeight.w600)),
-                ),
-
-                // Arama çubuğu
-                SliverToBoxAdapter(
-                  child: _SearchBar(
-                    value: prov.search,
-                    onChanged: prov.setSearch,
-                  ),
-                ),
-
-                // Tür filtre çipleri
-                SliverToBoxAdapter(
-                  child: _TypeChips(
-                    allTypes: prov.allTypes,
-                    selected: prov.selectedTypes,
-                    onToggle: prov.toggleType,
-                  ),
-                ),
-
-                // Gruplar
-                ...headers.map((h) {
-                  final items = (grouped[h]!..sort((a, b) => a.ad.compareTo(b.ad)))!;
-                  return SliverToBoxAdapter(
-                    child: KeyedSubtree(
-                      key: _sectionKeys[h],
-                      child: _Section(header: h, items: items),
+            // --- ARAMA BÖLÜMÜ ---
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _aramaCtrl,
+                      onChanged: p.aramaMetniniAyarla,
+                      textInputAction: TextInputAction.search,
+                      decoration: InputDecoration(
+                        hintText: 'Malzeme ara (örn: soğan, makarna...)',
+                        hintStyle: TextStyle(color: _textMuted),
+                        prefixIcon: Icon(Icons.search, color: _textMuted),
+                        suffixIcon: (_aramaCtrl.text.isNotEmpty || p.aramaMetni.isNotEmpty)
+                            ? IconButton(
+                          icon: Icon(Icons.close, color: _textMuted),
+                          tooltip: 'Temizle',
+                          onPressed: () {
+                            _aramaCtrl.clear();
+                            p.aramaMetniniAyarla('');
+                          },
+                        )
+                            : null,
+                        filled: true,
+                        fillColor: _surfaceSoft,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide(color: Colors.transparent),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: _primary, width: 1.2),
+                        ),
+                      ),
                     ),
-                  );
-                }),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 48)),
-              ],
+                  ),
+                  const SizedBox(width: 10),
+                  // Mikrofon butonu (şimdilik işlevsiz)
+                  SizedBox(
+                    height: 48,
+                    width: 48,
+                    child: Material(
+                      color: _surfaceSoft,
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          // TODO: Sesli arama tetikle (şimdilik boş)
+                        },
+                        child: Icon(Icons.mic_none, color: _textMuted),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
 
-            // Sağ alfabe rayı
-            if (headers.isNotEmpty)
-              Align(
-                alignment: Alignment.centerRight,
-                child: _AlphabetRail(
-                  letters: headers,
-                  onTap: _scrollTo,
+            // --- TÜR ÇİPLERİ (TEK SEÇİMLİ) ---
+            if (p.tumTurler.isNotEmpty)
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: p.tumTurler.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final tur = p.tumTurler[i];
+                    final aktif = (seciliTur == tur);
+                    return ChoiceChip(
+                      label: Text(
+                        tur,
+                        style: TextStyle(
+                          fontWeight: aktif ? FontWeight.w600 : FontWeight.w500,
+                          color: aktif ? _primaryDark : Colors.black87,
+                        ),
+                      ),
+                      selected: aktif,
+                      backgroundColor: _surfaceSoft,
+                      selectedColor: _primary.withOpacity(0.15),
+                      shape: StadiumBorder(
+                        side: BorderSide(
+                          color: aktif ? _primary : _border,
+                          width: 1.2,
+                        ),
+                      ),
+                      onSelected: (_) => p.turTekSec(aktif ? null : tur),
+                    );
+                  },
                 ),
               ),
+
+            // --- LİSTE ---
+            const SizedBox(height: 8),
+            Expanded(
+              child: liste.isEmpty
+                  ? const Center(child: Text('Sonuç bulunamadı'))
+                  : ListView.separated(
+                padding: const EdgeInsets.only(bottom: 88, left: 12, right: 12),
+                itemCount: liste.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (_, i) {
+                  final m = liste[i];
+                  final seciliMi = _seciliMalzemeIdleri.contains(m.id);
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeInOut,
+                    decoration: BoxDecoration(
+                      color: seciliMi ? _primary.withOpacity(0.08) : Colors.white,
+                      border: Border.all(
+                        color: seciliMi ? _primary : _border,
+                        width: 1.2,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => _malzemeSeciminiDegistir(m),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          child: Row(
+                            children: [
+                              // Sol ikon
+                              Icon(
+                                Icons.restaurant_outlined,
+                                color: seciliMi ? _primaryDark : _textMuted,
+                              ),
+                              const SizedBox(width: 12),
+
+                              // İsim + tür (esnek alan)
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      m.ad,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      m.malzemeTur,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: _textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Sağda seçim durumu (tik / boş)
+                              AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 160),
+                                transitionBuilder: (child, anim) =>
+                                    ScaleTransition(scale: anim, child: child),
+                                child: seciliMi
+                                    ? const Icon(
+                                  Icons.check_circle,
+                                  key: ValueKey('check'),
+                                  color: _primary,
+                                )
+                                    : Icon(
+                                  Icons.circle_outlined,
+                                  key: const ValueKey('uncheck'),
+                                  color: _textMuted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
-      ),
-    );
-  }
-}
 
-// — UI parçaları —
-class _SearchBar extends StatelessWidget {
-  final String value;
-  final ValueChanged<String> onChanged;
-  const _SearchBar({required this.value, required this.onChanged});
+        // --- ALT SABİT ÇUBUK: "X seçili" + (isteğe göre çöp kutusu) + "Tarif ara" ---
+        bottomNavigationBar: SafeArea(
+          top: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 10,
+                  offset: const Offset(0, -4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Seçili sayısı (her zaman görünsün)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _primary.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: _primary.withOpacity(0.25)),
+                  ),
+                  child: Text(
+                    '${_seciliMalzemeIdleri.length} seçili',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: _primaryDark,
+                    ),
+                  ),
+                ),
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-      child: TextField(
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Malzeme ara (örn: soğan, makarna...)',
-          prefixIcon: const Icon(Icons.search),
-          contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-      ),
-    );
-  }
-}
+                // Sadece seçim varsa kırmızı çöp kutusu gelsin
+                if (_seciliMalzemeIdleri.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: "Seçilenleri temizle",
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Colors.redAccent,
+                      size: 26,
+                    ),
+                    onPressed: () {
+                      setState(() => _seciliMalzemeIdleri.clear());
+                    },
+                  ),
+                ],
 
-class _TypeChips extends StatelessWidget {
-  final List<String> allTypes;
-  final Set<String> selected;
-  final ValueChanged<String> onToggle;
-  const _TypeChips({required this.allTypes, required this.selected, required this.onToggle});
+                const SizedBox(width: 8),
 
-  @override
-  Widget build(BuildContext context) {
-    if (allTypes.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 46,
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        scrollDirection: Axis.horizontal,
-        itemBuilder: (_, i) {
-          final t = allTypes[i];
-          final isSel = selected.contains(t);
-          return FilterChip(
-            label: Text(t),
-            selected: isSel,
-            onSelected: (_) => onToggle(t),
-          );
-        },
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemCount: allTypes.length,
-      ),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  final String header;
-  final List<Malzeme> items;
-  const _Section({required this.header, required this.items});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Grup başlığı
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-          child: Text(
-            header,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                // Tarif ara butonu (her durumda aynı boy)
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        // TODO: seçilen malzemelere göre arama işlemi
+                      },
+                      icon: const Icon(Icons.search, size: 22),
+                      label: const Text('Tarif ara'),
+                      style: ElevatedButton.styleFrom(
+                        elevation: 0,
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        textStyle: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-
-        // Grup listesi
-        ListView.separated(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (_, i) {
-            final m = items[i];
-            return ListTile(
-              title: Text(m.ad),
-              subtitle: Text(m.malzemeTur),
-              leading: const Icon(Icons.restaurant_outlined),
-              onTap: () {
-                // ileride: detaya git / seçim yap vs.
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _AlphabetRail extends StatelessWidget {
-  final List<String> letters;
-  final ValueChanged<String> onTap;
-  const _AlphabetRail({required this.letters, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 2),
-      child: SizedBox(
-        width: 28,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: letters.map((l) {
-            return InkWell(
-              onTap: () => onTap(l),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Text(l, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
-            );
-          }).toList(),
         ),
       ),
     );

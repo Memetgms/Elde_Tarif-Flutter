@@ -1,70 +1,137 @@
 import 'package:flutter/foundation.dart';
+import 'package:collection/collection.dart';
 import 'package:elde_tarif/apiservice.dart';
 import 'package:elde_tarif/models/malzeme.dart';
 
+/// Malzeme verilerini yöneten sınıf.
+/// Tüm listeyi API'den çeker, arama ve tür filtrelerini uygular.
 class MalzemeProvider extends ChangeNotifier {
   final ApiService api;
   MalzemeProvider(this.api);
 
-  bool loading = false;
-  String? error;
+  // --- DURUM (STATE) ALANLARI ---
+  bool yukleniyor = false; // veriler yükleniyor mu?
+  String? hata;            // hata mesajı (varsa)
+  List<Malzeme> _tumMalzemeler = []; // API'den gelen ham veri
 
-  List<Malzeme> _all = [];
-  List<Malzeme> get all => _all;
+  String _aramaMetni = '';          // arama kutusu değeri
+  final Set<String> _seciliTurler = {}; // seçilen tür(ler)
 
-  String _search = '';
-  String get search => _search;
+  // Veriler yüklenmiş mi?
+  bool get verilerYuklendi => _tumMalzemeler.isNotEmpty;
 
-  final Set<String> _selectedTypes = {};
-  Set<String> get selectedTypes => _selectedTypes;
+  // --- DIŞARIYA OKUNABİLEN ALANLAR ---
+  String get aramaMetni => _aramaMetni;
+  Set<String> get seciliTurler => _seciliTurler;
 
-  List<String> get allTypes {
-    final list = <String>{ for (final m in _all) m.malzemeTur.trim() }.toList();
-    list.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
-    return list;
+  /// Tüm türleri (örneğin "Et", "Sebze", "Bakliyat") alfabetik döndürür
+  List<String> get tumTurler {
+    final set = _tumMalzemeler.map((m) => m.malzemeTur.trim()).toSet();
+    final liste = set.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return liste;
   }
 
-  List<Malzeme> get filtered {
-    Iterable<Malzeme> q = _all;
+  /// Filtreli malzeme listesi
+  /// - Arama metnine ve tür seçimine göre filtrelenir
+  /// - İsme göre sıralanır
+  List<Malzeme> get filtreliListe {
+    Iterable<Malzeme> q = _tumMalzemeler;
 
-    if (_selectedTypes.isNotEmpty) {
-      q = q.where((m) => _selectedTypes.contains(m.malzemeTur));
-    }
-    if (_search.trim().isNotEmpty) {
-      final norm = _normalize(_search);
-      q = q.where((m) => _normalize(m.ad).contains(norm));
+    // Tür filtresi
+    if (_seciliTurler.isNotEmpty) {
+      q = q.where((m) => _seciliTurler.contains(m.malzemeTur));
     }
 
-    final list = q.toList()
+    // Arama filtresi
+    if (_aramaMetni.trim().isNotEmpty) {
+      final aranacak = _normalizeEt(_aramaMetni);
+      q = q.where((m) => _normalizeEt(m.ad).contains(aranacak));
+    }
+
+    final liste = q.toList()
       ..sort((a, b) => a.ad.toLowerCase().compareTo(b.ad.toLowerCase()));
-    return list;
+    return liste;
   }
 
-  Future<void> load() async {
-    loading = true;
-    error = null;
+  /// Filtrelenmiş listeyi ilk harfe göre gruplar (örnek: "A", "B", "Ç"...)
+  Map<String, List<Malzeme>> get harfeGoreGruplar {
+    final gruplar = groupBy<Malzeme, String>(filtreliListe, (m) {
+      final ilk = (m.ad.isNotEmpty ? m.ad[0] : '#').toUpperCase();
+      final harfMi = RegExp(r'[A-ZÇĞİÖŞÜ]').hasMatch(ilk);
+      return harfMi ? ilk : '#';
+    });
+    return gruplar;
+  }
+
+  // --- EYLEMLER (METODLAR) ---
+
+  /// API'den malzeme listesini çeker
+  Future<void> veriyiYukle() async {
+    // Eğer veriler zaten yüklendiyse tekrar yükleme
+    if (verilerYuklendi && !yukleniyor) {
+      return;
+    }
+
+    yukleniyor = true;
+    hata = null;
     notifyListeners();
+
     try {
-      _all = await api.fetchMalzemeler();
+      _tumMalzemeler = await api.fetchMalzemeler();
     } catch (e) {
-      error = e.toString();
+      hata = e.toString();
     } finally {
-      loading = false;
+      yukleniyor = false;
       notifyListeners();
     }
   }
 
-  void setSearch(String v) {
-    _search = v;
+  /// Yenile butonu için - zorunlu yenileme
+  Future<void> yenile() async {
+    yukleniyor = true;
+    hata = null;
+    notifyListeners();
+
+    try {
+      _tumMalzemeler = await api.fetchMalzemeler();
+    } catch (e) {
+      hata = e.toString();
+    } finally {
+      yukleniyor = false;
+      notifyListeners();
+    }
+  }
+
+  /// Arama metnini değiştirir
+  void aramaMetniniAyarla(String yeniMetin) {
+    _aramaMetni = yeniMetin;
     notifyListeners();
   }
 
-  void toggleType(String t) {
-    _selectedTypes.contains(t) ? _selectedTypes.remove(t) : _selectedTypes.add(t);
+  /// Çoklu seçim yerine TEK seçimli tür ayarı
+  /// - Gönderilen tür zaten seçiliyse seçim kaldırılır
+  /// - Farklı bir tür gönderilirse önce temizlik, sonra o tür seçilir
+  void turTekSec(String? tur) {
+    _seciliTurler.clear();
+    if (tur != null && tur.isNotEmpty) {
+      _seciliTurler.add(tur);
+    }
     notifyListeners();
   }
 
-  static String _normalize(String s) => s
+  /// Eski çoklu seçim tarzı istersen bu da kullanılabilir (şu an gerek yok)
+  void turSeciminiDegistir(String tur) {
+    _seciliTurler.contains(tur)
+        ? _seciliTurler.remove(tur)
+        : _seciliTurler.add(tur);
+    notifyListeners();
+  }
+
+  // --- YARDIMCI METODLAR ---
+
+  /// Türkçe-insensitif string normalize edici (ş→s, ı→i vb.)
+  static String _normalizeEt(String s) => s
       .toLowerCase()
       .replaceAll('ı', 'i')
       .replaceAll('İ', 'i')
