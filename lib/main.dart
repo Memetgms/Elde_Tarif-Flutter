@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/malzeme_provider.dart';
 import 'package:elde_tarif/screens/HomePage.dart';
+import 'package:elde_tarif/screens/AuthenticationPage.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // 🔴 EKLE
   runApp(const EldeTarifApp());
 }
 
@@ -31,6 +33,9 @@ class EldeTarifApp extends StatelessWidget {
           highlightColor: Colors.transparent,
         ),
         home: const Homepage(), // bottom nav burada
+        routes: {
+          '/auth': (context) => const AuthenticationPage(),
+        },
       ),
     );
   }
