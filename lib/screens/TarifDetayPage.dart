@@ -24,6 +24,7 @@ class TarifDetayPage extends StatefulWidget {
 class _TarifDetayPageState extends State<TarifDetayPage>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -40,7 +41,7 @@ class _TarifDetayPageState extends State<TarifDetayPage>
     _tab.dispose();
     super.dispose();
   }
-  // ✔ BURAYA EKLE
+
   String normalizeIngredient(String text) {
     text = text.replaceAll("\n", " ");
     text = text.replaceAll(RegExp(r'\s+'), ' ');
@@ -49,7 +50,6 @@ class _TarifDetayPageState extends State<TarifDetayPage>
 
   @override
   Widget build(BuildContext context) {
-    final api = ApiService();
 
     return Scaffold(
       body: Consumer<TarifDetayProvider>(
@@ -112,7 +112,7 @@ class _TarifDetayPageState extends State<TarifDetayPage>
                             bottomRight: Radius.circular(35),
                           ),
                           child: Image.network(
-                            api.getImageUrl(d.kapakFotoUrl ?? ''),
+                            _apiService.getImageUrl(d.kapakFotoUrl ?? ''),
                             fit: BoxFit.cover,
                           ),
                         ),

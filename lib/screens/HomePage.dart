@@ -2,12 +2,12 @@ import 'package:elde_tarif/screens/MalzemePage.dart';
 import 'package:elde_tarif/screens/SearchPage.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
 import 'package:elde_tarif/screens/SefDetayPage.dart';
+import 'package:elde_tarif/screens/AIPage.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:elde_tarif/apiservice.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 // Tema renkleri (MalzemePage'den)
 class AppTheme {
@@ -38,7 +38,7 @@ class _HomepageState extends State<Homepage> {
   final List<Widget> _pages = [
     const _HomeTab(),
     const MalzemelerPage(),
-    const _AiTab(),
+    const AIPage(),
     const _GunlukTab(),
     const _ProfilTab(),
   ];
@@ -116,6 +116,9 @@ class _HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<_HomeTab> {
+  final ApiService _apiService = ApiService();
+  String? _token; // 👈 token state
+
   @override
   void initState() {
     super.initState();
@@ -123,15 +126,18 @@ class _HomeTabState extends State<_HomeTab> {
     _loadToken();
     Future.microtask(() => context.read<HomeProvider>().verileriYukle());
   }
+
   Future<void> _loadToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    print("🏁 Home TOKEN: ${prefs.getString('token')}");
-    print("🏁 Home TOKEN: ${prefs.getString('refreshToken')}");
+    final tokens = await _apiService.getTokens();
+    setState(() {
+      _token = tokens['token'];
+    });
+    print("🏁 Home TOKEN: ${tokens['token']}");
+    print("🏁 Home REFRESH_TOKEN: ${tokens['refreshToken']}");
   }
 
   @override
   Widget build(BuildContext context) {
-    final api = ApiService();
     return Consumer<HomeProvider>(
       builder: (context, provider, child) {
         return Scaffold(
@@ -198,7 +204,7 @@ class _HomeTabState extends State<_HomeTab> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Hoşgeldiniz',
+                                'Hoşgeldiniz 👋',
                                 style: TextStyle(
                                   fontSize: 28,
                                   fontWeight: FontWeight.bold,
@@ -217,7 +223,8 @@ class _HomeTabState extends State<_HomeTab> {
                             ],
                           ),
                           // Login butonu
-                          ElevatedButton(
+                          if (_token == null || _token!.isEmpty)
+                            ElevatedButton(
                             onPressed: () {
                               Navigator.of(context).pushNamed('/auth');
                             },
@@ -286,7 +293,7 @@ class _HomeTabState extends State<_HomeTab> {
 
             // ======= ASIL İÇERİK =======
             SliverPadding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 5,horizontal: 10),
               sliver: SliverList.list(
                 children: [
                   // Şefler
@@ -302,7 +309,7 @@ class _HomeTabState extends State<_HomeTab> {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -337,7 +344,7 @@ class _HomeTabState extends State<_HomeTab> {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         // Şefler listesi
                         SizedBox(
                           height: 130,
@@ -387,7 +394,7 @@ class _HomeTabState extends State<_HomeTab> {
                                         child: sef.fotoUrl.isNotEmpty
                                             ? ClipOval(
                                                 child: Image.network(
-                                                  api.getImageUrl(sef.fotoUrl),
+                                                  _apiService.getImageUrl(sef.fotoUrl),
                                                   width: 72,
                                                   height: 72,
                                                   cacheWidth: 150,
@@ -432,7 +439,7 @@ class _HomeTabState extends State<_HomeTab> {
                   ),
 
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 10),
 
                   // Kategoriler
                   Container(
@@ -447,7 +454,7 @@ class _HomeTabState extends State<_HomeTab> {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -459,7 +466,7 @@ class _HomeTabState extends State<_HomeTab> {
                             color: AppTheme.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
                         SizedBox(
                           height: 130,
                           child: provider.kategoriler.isEmpty
@@ -502,7 +509,7 @@ class _HomeTabState extends State<_HomeTab> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
                                         child: Image.network(
-                                          api.getImageUrl(kategori.kategoriUrl),
+                                          _apiService.getImageUrl(kategori.kategoriUrl),
                                           width: 90,
                                           height: 90,
                                           fit: BoxFit.cover,
@@ -547,7 +554,7 @@ class _HomeTabState extends State<_HomeTab> {
                     ),
                   ),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 10),
 
                   // Tarifler
                   Container(
@@ -562,7 +569,7 @@ class _HomeTabState extends State<_HomeTab> {
                         ),
                       ],
                     ),
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(15),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -583,7 +590,7 @@ class _HomeTabState extends State<_HomeTab> {
                                 MaterialPageRoute(builder: (_) => const SearchPage()),
                               );},
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
@@ -598,7 +605,7 @@ class _HomeTabState extends State<_HomeTab> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 5),
                         provider.tarifler.isEmpty
                             ? Container(
                                 padding: const EdgeInsets.all(40),
@@ -615,6 +622,7 @@ class _HomeTabState extends State<_HomeTab> {
                                 ),
                               )
                             : GridView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
                           shrinkWrap: true,
                           physics: const NeverScrollableScrollPhysics(),
                           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -653,7 +661,7 @@ class _HomeTabState extends State<_HomeTab> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
                                         child: Image.network(
-                                          api.getImageUrl(tarif.kapakFotoUrl),
+                                          _apiService.getImageUrl(tarif.kapakFotoUrl),
                                           width: 200,
                                           height: 200,
                                           cacheWidth: 200,
@@ -707,16 +715,6 @@ class _HomeTabState extends State<_HomeTab> {
   }
 }
 
-class _AiTab extends StatelessWidget {
-  const _AiTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('AI Sayfası')),
-    );
-  }
-}
 
 class _GunlukTab extends StatelessWidget {
   const _GunlukTab();
@@ -734,8 +732,13 @@ class _ProfilTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Profil Sayfası')),
+    return  Scaffold(
+      body: Center(child: TextButton(child: Text('GİRİŞ YAP ')
+      ,onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AuthenticationPage()),);},
+      ),
+      )
     );
   }
 }

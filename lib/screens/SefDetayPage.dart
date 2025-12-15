@@ -24,17 +24,17 @@ class SefDetayPage extends StatefulWidget {
 
 class _SefDetayPageState extends State<SefDetayPage> {
   late final SefDetayProvider _provider;
+  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
-    _provider = SefDetayProvider(ApiService(), widget.sefId);
+    _provider = SefDetayProvider(_apiService, widget.sefId);
     Future.microtask(() => _provider.veriyiYukle());
   }
 
   @override
   Widget build(BuildContext context) {
-    final api = ApiService();
 
     return ChangeNotifierProvider.value(
       value: _provider,
@@ -133,7 +133,7 @@ class _SefDetayPageState extends State<SefDetayPage> {
                           child: ClipOval(
                             child: sef.fotoUrl.isNotEmpty
                                 ? Image.network(
-                                    api.getImageUrl(sef.fotoUrl),
+                                    _apiService.getImageUrl(sef.fotoUrl),
                                     width: 128,
                                     height: 128,
                                     cacheWidth: 256,
@@ -293,7 +293,7 @@ class _SefDetayPageState extends State<SefDetayPage> {
                                     child: Stack(
                                       children: [
                                         Image.network(
-                                          api.getImageUrl(tarif.kapakFotoUrl),
+                                          _apiService.getImageUrl(tarif.kapakFotoUrl),
                                           width: 200,
                                           height: 200,
                                           cacheWidth: 200,

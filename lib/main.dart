@@ -1,6 +1,8 @@
 import 'package:elde_tarif/Providers/tarif_detay_provider.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
+import 'package:elde_tarif/Providers/ai_provider.dart';
 import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/malzeme_provider.dart';
@@ -8,7 +10,7 @@ import 'package:elde_tarif/screens/HomePage.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // 🔴 EKLE
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const EldeTarifApp());
 }
 
@@ -22,6 +24,7 @@ class EldeTarifApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HomeProvider(ApiService())),
         ChangeNotifierProvider(create: (_) => MalzemeProvider(ApiService())),
         ChangeNotifierProvider(create: (_) => TarifDetayProvider(ApiService())),
+        ChangeNotifierProvider(create: (_) => AiProvider(ApiService())),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -32,7 +35,8 @@ class EldeTarifApp extends StatelessWidget {
           splashColor: Colors.transparent,
           highlightColor: Colors.transparent,
         ),
-        home: const Homepage(), // bottom nav burada
+        home: const SplashScreen(),
+
         routes: {
           '/auth': (context) => const AuthenticationPage(),
         },
