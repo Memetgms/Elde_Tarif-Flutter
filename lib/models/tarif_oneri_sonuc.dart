@@ -18,9 +18,8 @@ class TarifOneriSonuc {
     required this.toplamAgirlik,
     required this.eslesenMalzemeSayisi,
     required this.tarifToplamMalzemeSayisi,
-    required this.clusterId,
-    required this.tarifFoto,
-
+    this.clusterId,
+    this.tarifFoto,
     required this.eslesenMalzemeler,
   });
 
@@ -33,11 +32,12 @@ class TarifOneriSonuc {
       toplamAgirlik: (json['toplamAgirlik'] as num).toDouble(),
       eslesenMalzemeSayisi: json['eslesenMalzemeSayisi'] as int,
       tarifToplamMalzemeSayisi: json['tarifToplamMalzemeSayisi'] as int,
-      clusterId: json['clusterId'],
-      tarifFoto: json['tarifFoto'] as String,
-      eslesenMalzemeler: (json['eslesenMalzemeler'] as List<dynamic>)
-          .map((e) => e.toString())
-          .toList(),
+      clusterId: json['clusterId'] as int?,
+      tarifFoto: json['tarifFoto'] as String?,
+      eslesenMalzemeler: (json['eslesenMalzemeler'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
     );
   }
 }

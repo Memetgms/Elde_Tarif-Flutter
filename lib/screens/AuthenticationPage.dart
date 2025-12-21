@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/auth_api.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
 import 'package:elde_tarif/screens/HomePage.dart';
 import 'package:elde_tarif/screens/EmailVerificationPage.dart';
@@ -15,7 +17,7 @@ class AuthenticationPage extends StatefulWidget {
 }
 
 class _AuthenticationPageState extends State<AuthenticationPage> {
-  final ApiService _api = ApiService();
+  final AuthApi _authApi = AuthApi(ApiClient(), TokenService());
   final _formKey = GlobalKey<FormState>();
 
   bool _isLogin = true;
@@ -120,7 +122,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
 
   Future<void> _login() async {
     try {
-      await _api.login(
+      await _authApi.login(
         LoginDto(
           emailOrUserName: _emailCtrl.text.trim(),
           password: _passCtrl.text,
@@ -148,7 +150,7 @@ class _AuthenticationPageState extends State<AuthenticationPage> {
 
   Future<void> _register() async {
     try {
-      await _api.register(
+      await _authApi.register(
         RegisterDto(
           userName: _usernameCtrl.text.trim(),
           email: _emailCtrl.text.trim(),

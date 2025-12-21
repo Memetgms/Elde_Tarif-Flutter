@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/ai_provider.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
 
 class AppTheme {
@@ -27,7 +27,7 @@ class AIPage extends StatefulWidget {
 class _AIPageState extends State<AIPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final ApiService _apiService = ApiService();
+  final TokenService _tokenService = TokenService();
   String? _token;
   bool _isCheckingToken = true;
 
@@ -38,7 +38,7 @@ class _AIPageState extends State<AIPage> {
   }
 
   Future<void> _loadToken() async {
-    final tokens = await _apiService.getTokens();
+    final tokens = await _tokenService.getTokens();
     setState(() {
       _token = tokens['token'];
       _isCheckingToken = false;

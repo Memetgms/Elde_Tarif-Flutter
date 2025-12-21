@@ -99,7 +99,8 @@ class DetayYapimAdimi {
 class DetayYorum {
   final int id;
   final String kullaniciId;
-  final String? kullaniciAdSoyad;
+  final String? userName;
+  final String? kullaniciAdSoyad; // Eski alan, geriye uyumluluk için
   final String? icerik;
   final int? puan;
   final DateTime olusturulmaTarihi;
@@ -107,6 +108,7 @@ class DetayYorum {
   DetayYorum({
     required this.id,
     required this.kullaniciId,
+    this.userName,
     this.kullaniciAdSoyad,
     this.icerik,
     this.puan,
@@ -116,7 +118,8 @@ class DetayYorum {
   factory DetayYorum.fromJson(Map<String, dynamic> j) => DetayYorum(
     id: j['id'],
     kullaniciId: j['kullaniciId'],
-    kullaniciAdSoyad: j['kullaniciAdSoyad'],
+    userName: j['userName'] ?? j['kullaniciAdSoyad'], // Backend userName gönderiyor
+    kullaniciAdSoyad: j['kullaniciAdSoyad'] ?? j['userName'], // Geriye uyumluluk
     icerik: j['icerik'],
     puan: j['puan'],
     olusturulmaTarihi: DateTime.parse(j['olusturulmaTarihi']),

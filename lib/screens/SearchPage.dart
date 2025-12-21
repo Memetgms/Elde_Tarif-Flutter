@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:elde_tarif/Providers/home_provider.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/Providers/favorites_provider.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/tarifonizleme.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
 import 'homepage.dart';
@@ -45,7 +46,9 @@ class _SearchPageState extends State<SearchPage> {
   bool _showFilters = false; // To toggle filter visibility
 
   final TextEditingController _searchController = TextEditingController();
-  final ApiService _api = ApiService();
+  final ApiClient _apiClient = ApiClient();
+
+  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
 
   @override
   void initState() {
@@ -148,7 +151,8 @@ class _SearchPageState extends State<SearchPage> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.arrow_back_ios_new, size: 18),
+                              icon: const Icon(
+                                  Icons.arrow_back_ios_new, size: 18),
                               color: Colors.black87,
                               onPressed: () => Navigator.of(context).pop(),
                               padding: const EdgeInsets.all(10),
@@ -190,18 +194,18 @@ class _SearchPageState extends State<SearchPage> {
                                   ),
                                   suffixIcon: _searchText.isNotEmpty
                                       ? IconButton(
-                                          icon: Icon(
-                                            Icons.clear_rounded,
-                                            color: AppTheme.textMuted,
-                                            size: 20,
-                                          ),
-                                          onPressed: () {
-                                            _searchController.clear();
-                                            setState(() {
-                                              _searchText = '';
-                                            });
-                                          },
-                                        )
+                                    icon: Icon(
+                                      Icons.clear_rounded,
+                                      color: AppTheme.textMuted,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchText = '';
+                                      });
+                                    },
+                                  )
                                       : null,
                                   filled: true,
                                   fillColor: Colors.transparent,
@@ -230,436 +234,615 @@ class _SearchPageState extends State<SearchPage> {
                 Expanded(
                   child: provider.yukleniyor && !provider.verilerYuklendi
                       ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                                strokeWidth: 3,
-                              ),
-                              const SizedBox(height: 20),
-                              Text(
-                                'Tarifler yükleniyor...',
-                                style: TextStyle(
-                                  color: AppTheme.textMuted,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppTheme.primary),
+                          strokeWidth: 3,
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Tarifler yükleniyor...',
+                          style: TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
                           ),
-                        )
+                        ),
+                      ],
+                    ),
+                  )
                       : provider.hata != null
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.shade50,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: Icon(
-                                        Icons.error_outline_rounded,
-                                        size: 64,
-                                        color: Colors.red.shade400,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                    Text(
-                                      'Bir Hata Oluştu',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.black87,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      provider.hata ?? 'Bilinmeyen hata',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: AppTheme.textMuted,
-                                        fontSize: 15,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // ===== Compact Filtre & Sıralama Alanı =====
-                                Container(
-                                  margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.primary.withOpacity(0.06),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.02),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      // Üst satır: sonuç sayısı + sıralama + filter toggle
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(6),
-                                                decoration: BoxDecoration(
-                                                  gradient: LinearGradient(
-                                                    colors: [
-                                                      AppTheme.primary,
-                                                      AppTheme.primaryLight,
-                                                    ],
-                                                  ),
-                                                  borderRadius: BorderRadius.circular(10),
-                                                ),
-                                                child: const Icon(
-                                                  Icons.restaurant_menu_rounded,
-                                                  color: Colors.white,
-                                                  size: 18,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    '${filteredTarifler.length}',
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: AppTheme.primary,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    'tarif',
-                                                    style: TextStyle(
-                                                      fontSize: 12,
-                                                      color: AppTheme.textMuted,
-                                                      fontWeight: FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                          Row(
-                                            children: [
-                                              Container(
-                                                decoration: BoxDecoration(
-                                                  color: AppTheme.surfaceSoft,
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: AppTheme.border,
-                                                    width: 1.5,
-                                                  ),
-                                                ),
-                                                child: DropdownButtonHideUnderline(
-                                                  child: DropdownButton<TarifSortOption>(
-                                                    value: _sortOption,
-                                                    icon: Icon(
-                                                      Icons.sort_rounded,
-                                                      color: AppTheme.primary,
-                                                      size: 18,
-                                                    ),
-                                                    isDense: true,
-                                                    padding: const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 6,
-                                                    ),
-                                                    onChanged: (v) {
-                                                      if (v == null) return;
-                                                      setState(() => _sortOption = v);
-                                                    },
-                                                    items: [
-                                                      DropdownMenuItem(
-                                                        value: TarifSortOption.nameAsc,
-                                                        child: Row(
-                                                          children: [
-                                                            Icon(
-                                                              Icons.arrow_upward_rounded,
-                                                              size: 16,
-                                                              color: AppTheme.textMuted,
-                                                            ),
-                                                            const SizedBox(width: 6),
-                                                            const Text(
-                                                              'A-Z',
-                                                              style: TextStyle(
-                                                                fontWeight: FontWeight.w600,
-                                                                fontSize: 12,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                      DropdownMenuItem(
-                                                        value: TarifSortOption.nameDesc,
-                                                        child: Row(
-                                                          children: [
-                                                            Icon(
-                                                              Icons.arrow_downward_rounded,
-                                                              size: 16,
-                                                              color: AppTheme.textMuted,
-                                                            ),
-                                                            const SizedBox(width: 6),
-                                                            const Text(
-                                                              'Z-A',
-                                                              style: TextStyle(
-                                                                fontWeight: FontWeight.w600,
-                                                                fontSize: 12,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ),
-                                              const SizedBox(width: 8),
-                                              IconButton(
-                                                icon: Icon(
-                                                  _showFilters ? Icons.filter_alt_off : Icons.filter_alt,
-                                                  color: AppTheme.primary,
-                                                  size: 20,
-                                                ),
-                                                onPressed: () {
-                                                  setState(() {
-                                                    _showFilters = !_showFilters;
-                                                  });
-                                                },
-                                                padding: const EdgeInsets.all(8),
-                                                constraints: const BoxConstraints(),
-                                                style: IconButton.styleFrom(
-                                                  backgroundColor: AppTheme.surfaceSoft,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-
-                                      // Collapsible filter section
-                                      if (_showFilters) ...[
-                                        // Kategori filtresi
-                                        if (provider.kategoriler.isNotEmpty) ...[
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.category_rounded,
-                                                size: 16,
-                                                color: AppTheme.primary,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'KATEGORİ',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppTheme.textMuted,
-                                                  letterSpacing: 1,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 10),
-                                          SizedBox(
-                                            height: 36,
-                                            child: ListView(
-                                              scrollDirection: Axis.horizontal,
-                                              children: [
-                                                _buildCompactChip(
-                                                  label: 'Tümü',
-                                                  selected: _selectedKategoriId == null,
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _selectedKategoriId = null;
-                                                    });
-                                                  },
-                                                ),
-                                                const SizedBox(width: 8),
-                                                ...provider.kategoriler.map((k) {
-                                                  final selected = _selectedKategoriId == k.id;
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(right: 8),
-                                                    child: _buildCompactChip(
-                                                      label: k.ad,
-                                                      selected: selected,
-                                                      onTap: () {
-                                                        setState(() {
-                                                          _selectedKategoriId = selected ? null : k.id;
-                                                        });
-                                                      },
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                        ],
-
-                                        // Şef filtresi
-                                        if (provider.sefler.isNotEmpty) ...[
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.person_rounded,
-                                                size: 16,
-                                                color: AppTheme.primary,
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                'ŞEF',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppTheme.textMuted,
-                                                  letterSpacing: 1,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 10),
-                                          SizedBox(
-                                            height: 36,
-                                            child: ListView(
-                                              scrollDirection: Axis.horizontal,
-                                              children: [
-                                                _buildCompactChip(
-                                                  label: 'Tümü',
-                                                  selected: _selectedSefId == null,
-                                                  onTap: () {
-                                                    setState(() {
-                                                      _selectedSefId = null;
-                                                    });
-                                                  },
-                                                ),
-                                                const SizedBox(width: 8),
-                                                ...provider.sefler.map((s) {
-                                                  final selected = _selectedSefId == s.id;
-                                                  return Padding(
-                                                    padding: const EdgeInsets.only(right: 8),
-                                                    child: _buildCompactChip(
-                                                      label: s.ad,
-                                                      selected: selected,
-                                                      onTap: () {
-                                                        setState(() {
-                                                          _selectedSefId = selected ? null : s.id;
-                                                        });
-                                                      },
-                                                    ),
-                                                  );
-                                                }).toList(),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ],
-                                  ),
-                                ),
-
-                                const SizedBox(height: 8),
-
-                                // ===== Tarif listesi =====
-                                Expanded(
-                                  child: filteredTarifler.isEmpty
-                                      ? Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.all(32),
-                                            child: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Container(
-                                                  padding: const EdgeInsets.all(24),
-                                                  decoration: BoxDecoration(
-                                                    color: AppTheme.surfaceSoft,
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: Icon(
-                                                    Icons.search_off_rounded,
-                                                    size: 64,
-                                                    color: AppTheme.textMuted.withOpacity(0.5),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 24),
-                                                Text(
-                                                  'Tarif Bulunamadı',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: Colors.black87,
-                                                    fontSize: 22,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 12),
-                                                Text(
-                                                  'Arama kriterlerinize uygun tarif bulunamadı.\nFarklı filtrelerle tekrar deneyin.',
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    color: AppTheme.textMuted,
-                                                    fontSize: 15,
-                                                    height: 1.5,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        )
-                                      : GridView.builder(
-                                          physics: const BouncingScrollPhysics(),
-                                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: 2,
-                                            mainAxisSpacing: 16,
-                                            crossAxisSpacing: 16,
-                                            childAspectRatio: 0.72,
-                                          ),
-                                          itemCount: filteredTarifler.length,
-                                          itemBuilder: (context, index) {
-                                            final tarif = filteredTarifler[index];
-                                            return _buildTarifCard(context, tarif, _api);
-                                          },
-                                        ),
-                                ),
-                              ],
+                      ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.error_outline_rounded,
+                              size: 64,
+                              color: Colors.red.shade400,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'Bir Hata Oluştu',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            provider.hata ?? 'Bilinmeyen hata',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 15,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  );
+                  )
+                      : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // ===== Compact Filtre & Sıralama Alanı =====
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary.withOpacity(0.06),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 4,
+                              offset: const Offset(0, 1),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Üst satır: sonuç sayısı + sıralama + filter toggle
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppTheme.primary,
+                                            AppTheme.primaryLight,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Icon(
+                                        Icons.restaurant_menu_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment
+                                          .start,
+                                      children: [
+                                        Text(
+                                          '${filteredTarifler.length}',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primary,
+                                          ),
+                                        ),
+                                        Text(
+                                          'tarif',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textMuted,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.surfaceSoft,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppTheme.border,
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                      child: DropdownButtonHideUnderline(
+                                        child: DropdownButton<TarifSortOption>(
+                                          value: _sortOption,
+                                          icon: Icon(
+                                            Icons.sort_rounded,
+                                            color: AppTheme.primary,
+                                            size: 18,
+                                          ),
+                                          isDense: true,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          onChanged: (v) {
+                                            if (v == null) return;
+                                            setState(() => _sortOption = v);
+                                          },
+                                          items: [
+                                            DropdownMenuItem(
+                                              value: TarifSortOption.nameAsc,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.arrow_upward_rounded,
+                                                    size: 16,
+                                                    color: AppTheme.textMuted,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  const Text(
+                                                    'A-Z',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight
+                                                          .w600,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            DropdownMenuItem(
+                                              value: TarifSortOption.nameDesc,
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons
+                                                        .arrow_downward_rounded,
+                                                    size: 16,
+                                                    color: AppTheme.textMuted,
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  const Text(
+                                                    'Z-A',
+                                                    style: TextStyle(
+                                                      fontWeight: FontWeight
+                                                          .w600,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    IconButton(
+                                      icon: Icon(
+                                        _showFilters
+                                            ? Icons.filter_alt_off
+                                            : Icons.filter_alt,
+                                        color: AppTheme.primary,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          _showFilters = !_showFilters;
+                                        });
+                                      },
+                                      padding: const EdgeInsets.all(8),
+                                      constraints: const BoxConstraints(),
+                                      style: IconButton.styleFrom(
+                                        backgroundColor: AppTheme.surfaceSoft,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              12),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Collapsible filter section
+                            if (_showFilters) ...[
+                              // Kategori filtresi
+                              if (provider.kategoriler.isNotEmpty) ...[
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.category_rounded,
+                                      size: 16,
+                                      color: AppTheme.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'KATEGORİ',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textMuted,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 36,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    children: [
+                                      _buildCompactChip(
+                                        label: 'Tümü',
+                                        selected: _selectedKategoriId == null,
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedKategoriId = null;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ...provider.kategoriler.map((k) {
+                                        final selected = _selectedKategoriId ==
+                                            k.id;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              right: 8),
+                                          child: _buildCompactChip(
+                                            label: k.ad,
+                                            selected: selected,
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedKategoriId =
+                                                selected ? null : k.id;
+                                              });
+                                            },
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+
+                              // Şef filtresi
+                              if (provider.sefler.isNotEmpty) ...[
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_rounded,
+                                      size: 16,
+                                      color: AppTheme.primary,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'ŞEF',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.textMuted,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 36,
+                                  child: ListView(
+                                    scrollDirection: Axis.horizontal,
+                                    children: [
+                                      _buildCompactChip(
+                                        label: 'Tümü',
+                                        selected: _selectedSefId == null,
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedSefId = null;
+                                          });
+                                        },
+                                      ),
+                                      const SizedBox(width: 8),
+                                      ...provider.sefler.map((s) {
+                                        final selected = _selectedSefId == s.id;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                              right: 8),
+                                          child: _buildCompactChip(
+                                            label: s.ad,
+                                            selected: selected,
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedSefId =
+                                                selected ? null : s.id;
+                                              });
+                                            },
+                                          ),
+                                        );
+                                      }).toList(),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      // ===== Tarif listesi =====
+                      Expanded(
+                        child: filteredTarifler.isEmpty
+                            ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surfaceSoft,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.search_off_rounded,
+                                    size: 64,
+                                    color: AppTheme.textMuted.withOpacity(0.5),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Text(
+                                  'Tarif Bulunamadı',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'Arama kriterlerinize uygun tarif bulunamadı.\nFarklı filtrelerle tekrar deneyin.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 15,
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                            : GridView.builder(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            childAspectRatio: 0.72,
+                          ),
+                          itemCount: filteredTarifler.length,
+                          itemBuilder: (context, index) {
+                            final tarif = filteredTarifler[index];
+                            return _buildTarifCard(context, tarif);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }
-}
+
+  // Modern tarif kartı builder metodu
+  Widget _buildTarifCard(BuildContext context, TarifOnizleme tarif) {
+    final imageUrl = _apiClient.getImageUrl(tarif.kapakFotoUrl);
+    return Consumer<FavoritesProvider>(
+      builder: (context, favoritesProvider, _) {
+        final isFavorite = favoritesProvider.isFavorite(tarif.id);
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => TarifDetayPage(tarifId: tarif.id),
+              ),
+            );
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.08),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          imageUrl,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Container(
+                              color: AppTheme.surfaceSoft,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  value: loadingProgress.expectedTotalBytes !=
+                                      null
+                                      ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                      : null,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) =>
+                              Container(
+                                color: AppTheme.surfaceSoft,
+                                child: const Icon(
+                                  Icons.restaurant,
+                                  size: 48,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                        ),
+                        // Favori ikonu
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: GestureDetector(
+                            onTap: () {
+                              favoritesProvider.toggleFavorite(
+                                  tarif.id, context);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isFavorite ? Icons.favorite : Icons
+                                    .favorite_border,
+                                color: isFavorite ? Colors.red : Colors.black87,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tarif.baslik,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            if (tarif.toplamSure != null) ...[
+                              Icon(Icons.access_time, size: 14,
+                                  color: AppTheme.textMuted),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${tarif.toplamSure} dk',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                            ],
+                            if (tarif.porsiyonSayisi != null) ...[
+                              Icon(Icons.people_outline, size: 14,
+                                  color: AppTheme.textMuted),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${tarif.porsiyonSayisi} porsiyon',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textMuted,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   // Modern chip builder metodu
   Widget _buildModernChip({
@@ -676,10 +859,10 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           gradient: selected
               ? LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.primaryLight],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
+            colors: [AppTheme.primary, AppTheme.primaryLight],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
               : null,
           color: selected ? null : AppTheme.surfaceSoft,
           borderRadius: BorderRadius.circular(25),
@@ -689,12 +872,12 @@ class _SearchPageState extends State<SearchPage> {
           ),
           boxShadow: selected
               ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
+            BoxShadow(
+              color: AppTheme.primary.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ]
               : null,
         ),
         child: Text(
@@ -724,10 +907,10 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           gradient: selected
               ? LinearGradient(
-                  colors: [AppTheme.primary, AppTheme.primaryLight],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
+            colors: [AppTheme.primary, AppTheme.primaryLight],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
               : null,
           color: selected ? null : AppTheme.surfaceSoft,
           borderRadius: BorderRadius.circular(20),
@@ -737,12 +920,12 @@ class _SearchPageState extends State<SearchPage> {
           ),
           boxShadow: selected
               ? [
-                  BoxShadow(
-                    color: AppTheme.primary.withOpacity(0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
+            BoxShadow(
+              color: AppTheme.primary.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ]
               : null,
         ),
         child: Text(
@@ -756,126 +939,4 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
-
-  // Modern tarif kartı builder metodu
-  Widget _buildTarifCard(BuildContext context, TarifOnizleme tarif, ApiService api) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => TarifDetayPage(tarifId: tarif.id),
-          ),
-        );
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withOpacity(0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 5,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
-                ),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Image.network(
-                      api.getImageUrl(tarif.kapakFotoUrl),
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: AppTheme.surfaceSoft,
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                  : null,
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-                            ),
-                          ),
-                        );
-                      },
-                      errorBuilder: (_, __, ___) => Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [AppTheme.surfaceSoft, Colors.white],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.restaurant_menu_rounded,
-                          size: 50,
-                          color: AppTheme.textMuted.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                    // Gradient overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.1),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      tarif.baslik,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
-                        height: 1.3,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+}

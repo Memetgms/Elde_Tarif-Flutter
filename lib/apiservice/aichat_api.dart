@@ -1,19 +1,19 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:elde_tarif/apiservice/api_service.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 
 class AiChatApi {
+  final ApiClient _client;
   final TokenService _tokenService;
 
-  AiChatApi(this._tokenService);
+  AiChatApi(this._client, this._tokenService);
 
   Future<String> sendMessage(String message) async {
     if (message.trim().isEmpty) {
       throw Exception('Lütfen bir mesaj gönderin.');
     }
 
-    // Token'ı al
+    // Token kontrolü
     final tokens = await _tokenService.getTokens();
     final token = tokens['token'];
 
@@ -21,19 +21,14 @@ class AiChatApi {
       throw Exception('Giriş yapmanız gerekiyor. Lütfen önce giriş yapın.');
     }
 
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/Chat');
-
     final requestBody = jsonEncode({
       'message': message,
     });
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
+    final response = await _client.postRaw(
+      '/api/Chat',
       body: requestBody,
+      requireAuth: true,
     );
 
     // Debug için response bilgilerini logla
@@ -79,8 +74,6 @@ class AiChatApi {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         
         // Önce 'reply' alanını kontrol et (backend'den gelen mesaj)
-        // Backend'den gelen reply mesajını exception olarak fırlat
-        // böylece provider'da hata olarak gösterilebilir
         if (data.containsKey('reply')) {
           final reply = data['reply'];
           if (reply != null && reply is String && reply.isNotEmpty) {
@@ -110,4 +103,3 @@ class AiChatApi {
     }
   }
 }
-

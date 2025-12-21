@@ -1,12 +1,11 @@
 import 'package:elde_tarif/Providers/tarif_detay_provider.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
 import 'package:elde_tarif/Providers/ai_provider.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/Providers/favorites_provider.dart';
 import 'package:elde_tarif/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/malzeme_provider.dart';
-import 'package:elde_tarif/screens/HomePage.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
 
 Future<void> main() async {
@@ -21,10 +20,11 @@ class EldeTarifApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => HomeProvider(ApiService())),
-        ChangeNotifierProvider(create: (_) => MalzemeProvider(ApiService())),
-        ChangeNotifierProvider(create: (_) => TarifDetayProvider(ApiService())),
-        ChangeNotifierProvider(create: (_) => AiProvider(ApiService())),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => MalzemeProvider()),
+        ChangeNotifierProvider(create: (_) => TarifDetayProvider()),
+        ChangeNotifierProvider(create: (_) => AiProvider()),
+        ChangeNotifierProvider(create: (_) => FavoritesProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,

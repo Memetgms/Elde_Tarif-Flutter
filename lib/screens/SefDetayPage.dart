@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/sef_detay_provider.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
 
 // Tema renkleri (MalzemePage'den)
@@ -24,13 +24,20 @@ class SefDetayPage extends StatefulWidget {
 
 class _SefDetayPageState extends State<SefDetayPage> {
   late final SefDetayProvider _provider;
-  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
-    _provider = SefDetayProvider(_apiService, widget.sefId);
+    _provider = SefDetayProvider(widget.sefId);
     Future.microtask(() => _provider.veriyiYukle());
+  }
+
+  String getImageUrl(String imagePath) {
+    if (imagePath.isEmpty) return imagePath;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    return '${ApiClient.baseUrl}$imagePath';
   }
 
   @override
@@ -133,7 +140,7 @@ class _SefDetayPageState extends State<SefDetayPage> {
                           child: ClipOval(
                             child: sef.fotoUrl.isNotEmpty
                                 ? Image.network(
-                                    _apiService.getImageUrl(sef.fotoUrl),
+                                    getImageUrl(sef.fotoUrl),
                                     width: 128,
                                     height: 128,
                                     cacheWidth: 256,
@@ -293,7 +300,7 @@ class _SefDetayPageState extends State<SefDetayPage> {
                                     child: Stack(
                                       children: [
                                         Image.network(
-                                          _apiService.getImageUrl(tarif.kapakFotoUrl),
+                                          getImageUrl(tarif.kapakFotoUrl),
                                           width: 200,
                                           height: 200,
                                           cacheWidth: 200,

@@ -1,12 +1,13 @@
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/chef_api.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/sef_detay.dart';
 import 'package:flutter/foundation.dart';
 
 class SefDetayProvider extends ChangeNotifier {
-  final ApiService api;
+  final ChefApi _chefApi;
   final int sefId;
 
-  SefDetayProvider(this.api, this.sefId);
+  SefDetayProvider(this.sefId) : _chefApi = ChefApi(ApiClient());
 
   bool _yukleniyor = false;
   String? _hata;
@@ -46,7 +47,7 @@ class SefDetayProvider extends ChangeNotifier {
       _hata = null;
       notifyListeners();
 
-      _sefDetay = await api.getSefDetay(sefId);
+      _sefDetay = await _chefApi.getSefDetay(sefId);
       _yukleniyor = false;
       _hata = null;
       notifyListeners();
@@ -63,7 +64,7 @@ class SefDetayProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _sefDetay = await api.getSefDetay(sefId);
+      _sefDetay = await _chefApi.getSefDetay(sefId);
       _yukleniyor = false;
       _hata = null;
       notifyListeners();

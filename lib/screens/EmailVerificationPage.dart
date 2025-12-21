@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/auth_api.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
 import 'package:elde_tarif/widgets/custom_toast.dart';
 
@@ -15,7 +17,7 @@ class EmailVerificationPage extends StatefulWidget {
 }
 
 class _EmailVerificationPageState extends State<EmailVerificationPage> {
-  final ApiService _api = ApiService();
+  final AuthApi _authApi = AuthApi(ApiClient(), TokenService());
   final _codeController = TextEditingController();
 
   bool _loading = false;
@@ -67,7 +69,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     setState(() => _loading = true);
 
     try {
-      await _api.confirmEmail(
+      await _authApi.confirmEmail(
         ConfirmEmailCodeDto(
           email: widget.email,
           code: _codeController.text.trim(),
@@ -98,7 +100,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     setState(() => _loading = true);
 
     try {
-      await _api.resendCode(
+      await _authApi.resendCode(
         ResendCodeDto(email: widget.email),
       );
 

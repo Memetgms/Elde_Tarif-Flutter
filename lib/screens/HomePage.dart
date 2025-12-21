@@ -4,8 +4,10 @@ import 'package:elde_tarif/screens/TarifDetayPage.dart';
 import 'package:elde_tarif/screens/SefDetayPage.dart';
 import 'package:elde_tarif/screens/AIPage.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
+import 'package:elde_tarif/Providers/favorites_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
 
@@ -116,8 +118,10 @@ class _HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<_HomeTab> {
-  final ApiService _apiService = ApiService();
+  final ApiClient _apiClient = ApiClient();
   String? _token; // 👈 token state
+
+  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
 
   @override
   void initState() {
@@ -128,7 +132,7 @@ class _HomeTabState extends State<_HomeTab> {
   }
 
   Future<void> _loadToken() async {
-    final tokens = await _apiService.getTokens();
+    final tokens = await TokenService().getTokens();
     setState(() {
       _token = tokens['token'];
     });
@@ -394,7 +398,7 @@ class _HomeTabState extends State<_HomeTab> {
                                         child: sef.fotoUrl.isNotEmpty
                                             ? ClipOval(
                                                 child: Image.network(
-                                                  _apiService.getImageUrl(sef.fotoUrl),
+                                                  getImageUrl(sef.fotoUrl),
                                                   width: 72,
                                                   height: 72,
                                                   cacheWidth: 150,
@@ -468,7 +472,7 @@ class _HomeTabState extends State<_HomeTab> {
                         ),
                         const SizedBox(height: 10),
                         SizedBox(
-                          height: 130,
+                          height: 150,
                           child: provider.kategoriler.isEmpty
                               ? Center(
                                   child: Text(
@@ -509,7 +513,7 @@ class _HomeTabState extends State<_HomeTab> {
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
                                         child: Image.network(
-                                          _apiService.getImageUrl(kategori.kategoriUrl),
+                                          getImageUrl(kategori.kategoriUrl),
                                           width: 90,
                                           height: 90,
                                           fit: BoxFit.cover,
@@ -556,152 +560,170 @@ class _HomeTabState extends State<_HomeTab> {
 
                   const SizedBox(height: 10),
 
-                  // Tarifler
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.cardBackground,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 15,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(15),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Öne Çıkan Tarifler',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.textPrimary,
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () {Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const SearchPage()),
-                              );},
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Daha Fazla',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.primary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 5),
-                        provider.tarifler.isEmpty
-                            ? Container(
-                                padding: const EdgeInsets.all(40),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surfaceSoft,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppTheme.border),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    'Henüz tarif bulunamadı',
-                                    style: TextStyle(color: AppTheme.textMuted),
-                                  ),
-                                ),
-                              )
-                            : GridView.builder(
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 16,
-                            crossAxisSpacing: 16,
-                            childAspectRatio: 0.85,
+                  // Sana Özel Öneriler
+                  if (provider.sanaOzelOneriler.isNotEmpty)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.cardBackground,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 15,
+                            offset: const Offset(0, 4),
                           ),
-                          itemCount: provider.tarifler.length,
-                          itemBuilder: (context, index) {
-                            final tarif = provider.tarifler[index];
-                            return InkWell(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => TarifDetayPage(tarifId: tarif.id),
-                                  ),
-                                );
-                              },
-                              borderRadius: BorderRadius.circular(16),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Row(
                                 children: [
-                                  Expanded(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(16),
-                                        child: Image.network(
-                                          _apiService.getImageUrl(tarif.kapakFotoUrl),
-                                          width: 200,
-                                          height: 200,
-                                          cacheWidth: 200,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
-                                            width: double.infinity,
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.surfaceSoft,
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: Icon(
-                                              Icons.restaurant,
-                                              size: 40,
-                                              color: AppTheme.textMuted,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
+                                  Text(
+                                    'Sana Özel',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.textPrimary,
                                     ),
                                   ),
-                                  const SizedBox(height: 10),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    tarif.baslik,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textPrimary,
-                                      height: 1.3,
-                                    ),
+                                    '✨',
+                                    style: TextStyle(fontSize: 20),
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 200,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: EdgeInsets.zero,
+                              itemCount: provider.sanaOzelOneriler.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 16),
+                              itemBuilder: (context, index) {
+                                final tarif = provider.sanaOzelOneriler[index];
+                                return Consumer<FavoritesProvider>(
+                                  builder: (context, favoritesProvider, _) {
+                                    final isFavorite = favoritesProvider.isFavorite(tarif.id);
+                                    return InkWell(
+                                      onTap: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => TarifDetayPage(tarifId: tarif.id),
+                                          ),
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: SizedBox(
+                                        width: 160,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Expanded(
+                                              child: Stack(
+                                                children: [
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      borderRadius: BorderRadius.circular(16),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: Colors.black.withOpacity(0.1),
+                                                          blurRadius: 12,
+                                                          offset: const Offset(0, 4),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: ClipRRect(
+                                                      borderRadius: BorderRadius.circular(16),
+                                                      child: Image.network(
+                                                        getImageUrl(tarif.kapakFotoUrl),
+                                                        width: 160,
+                                                        height: 200,
+                                                        cacheWidth: 320,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder: (_, __, ___) => Container(
+                                                          width: double.infinity,
+                                                          height: double.infinity,
+                                                          decoration: BoxDecoration(
+                                                            color: AppTheme.surfaceSoft,
+                                                            borderRadius: BorderRadius.circular(16),
+                                                          ),
+                                                          child: Icon(
+                                                            Icons.restaurant,
+                                                            size: 40,
+                                                            color: AppTheme.textMuted,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  // Kalp ikonu
+                                                  Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: GestureDetector(
+                                                      onTap: () {
+                                                        favoritesProvider.toggleFavorite(tarif.id, context);
+                                                      },
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(6),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.white.withOpacity(0.9),
+                                                          shape: BoxShape.circle,
+                                                          boxShadow: [
+                                                            BoxShadow(
+                                                              color: Colors.black.withOpacity(0.1),
+                                                              blurRadius: 4,
+                                                              offset: const Offset(0, 2),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        child: Icon(
+                                                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                                                          color: isFavorite ? Colors.red : AppTheme.textMuted,
+                                                          size: 20,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              tarif.baslik,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppTheme.textPrimary,
+                                                height: 1.3,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+
+                  if (provider.sanaOzelOneriler.isNotEmpty) const SizedBox(height: 10),
 
                 ],
               ),

@@ -1,25 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/excepiton/emailexception.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
-import 'package:elde_tarif/apiservice/token_service.dart';
-import 'api_service.dart';
+import 'package:elde_tarif/services/client_id_services.dart';
 
 class AuthApi {
+  final ApiClient _client;
   final TokenService _tokenService;
 
-  AuthApi(BaseApiService apiService, this._tokenService);
+  AuthApi(this._client, this._tokenService);
 
   // Hata mesajını parse eden helper metod
-  String _parseErrorMessage(http.Response response) {
-    // Response body boşsa
-    if (response.body.isEmpty) {
+  String _parseErrorMessage(String responseBody) {
+    if (responseBody.isEmpty) {
       return 'Bir hata oluştu. Lütfen tekrar deneyin.';
     }
 
     try {
-      // JSON parse etmeyi dene
-      final errorData = jsonDecode(response.body);
+      final errorData = jsonDecode(responseBody);
       
       if (errorData is Map<String, dynamic>) {
         // 'message' anahtarı varsa onu kullan
@@ -63,13 +63,9 @@ class AuthApi {
       }
     } catch (e) {
       // JSON parse hatası - response body'yi direkt kullan
-      // Ama eğer "Format" hatası varsa, sadece mesajı al
-      final body = response.body.trim();
+      final body = responseBody.trim();
       if (body.startsWith('Format') || body.contains('Unexpected character')) {
-        // JSON parse hatası, backend'den gelen asıl mesajı bulmaya çalış
-        // Eğer içinde JSON benzeri bir yapı varsa onu parse etmeyi dene
         try {
-          // İlk '{' veya '[' karakterinden sonrasını al
           final jsonStart = body.indexOf('{');
           if (jsonStart != -1) {
             final jsonPart = body.substring(jsonStart);
@@ -79,7 +75,6 @@ class AuthApi {
             }
           }
         } catch (_) {
-          // Parse edilemezse, sadece body'yi döndür ama temizle
           return body.replaceAll(RegExp(r'Format.*?:\s*'), '')
                      .replaceAll(RegExp(r'Exception:\s*'), '')
                      .trim();
@@ -92,12 +87,9 @@ class AuthApi {
   }
 
   Future<AuthResponse> login(LoginDto dto) async {
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/login');
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(dto.toJson()),
+    final response = await _client.postRaw(
+      '/api/auth/login',
+      body: dto.toJson(),
     );
 
     if (response.statusCode == 200) {
@@ -127,17 +119,14 @@ class AuthApi {
       }
     }
 
-    throw Exception(_parseErrorMessage(response));
+    throw Exception(_parseErrorMessage(response.body));
   }
 
-  // Kayıt ol (artık token döndürmüyor, sadece mesaj döndürüyor)
+  // Kayıt ol
   Future<RegisterResponse> register(RegisterDto dto) async {
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/register');
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(dto.toJson()),
+    final response = await _client.postRaw(
+      '/api/auth/register',
+      body: dto.toJson(),
     );
 
     if (response.statusCode == 200) {
@@ -148,18 +137,15 @@ class AuthApi {
         throw Exception('Yanıt işlenirken bir hata oluştu.');
       }
     } else {
-      throw Exception(_parseErrorMessage(response));
+      throw Exception(_parseErrorMessage(response.body));
     }
   }
 
   // Email doğrulama
   Future<String> confirmEmail(ConfirmEmailCodeDto dto) async {
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/confirm-email');
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(dto.toJson()),
+    final response = await _client.postRaw(
+      '/api/auth/confirm-email',
+      body: dto.toJson(),
     );
 
     if (response.statusCode == 200) {
@@ -170,18 +156,15 @@ class AuthApi {
         return 'Email başarıyla doğrulandı.';
       }
     } else {
-      throw Exception(_parseErrorMessage(response));
+      throw Exception(_parseErrorMessage(response.body));
     }
   }
 
   // Kod tekrar gönder
   Future<String> resendCode(ResendCodeDto dto) async {
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/resend-code');
-
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(dto.toJson()),
+    final response = await _client.postRaw(
+      '/api/auth/resend-code',
+      body: dto.toJson(),
     );
 
     if (response.statusCode == 200) {
@@ -192,18 +175,25 @@ class AuthApi {
         return 'Doğrulama kodu tekrar gönderildi.';
       }
     } else {
-      throw Exception(_parseErrorMessage(response));
+      throw Exception(_parseErrorMessage(response.body));
     }
   }
 
   // Refresh token ile yeni token al
   Future<AuthResponse> refreshToken(String refreshToken) async {
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/refresh-token');
-
+    // Backend direkt string bekliyor (JSON encode edilmeden)
+    // postRaw jsonEncode yapıyor, bu yüzden http.post kullanıyoruz
+    final uri = Uri.parse('${ApiClient.baseUrl}/api/auth/refresh-token');
+    final clientId = await ClientIdService.getOrCreate();
+    final headers = {
+      'Content-Type': 'application/json',
+      'X-Client-Id': clientId,
+    };
+    
     final response = await http.post(
       uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(refreshToken), // Backend string bekliyor, jsonEncode ile gönderiyoruz
+      headers: headers,
+      body: refreshToken, // Direkt string gönder (jsonEncode yapma)
     );
 
     if (response.statusCode == 200) {
@@ -219,7 +209,7 @@ class AuthApi {
         throw Exception('Token yenileme yanıtı işlenirken bir hata oluştu.');
       }
     } else {
-      throw Exception(_parseErrorMessage(response));
+      throw Exception(_parseErrorMessage(response.body));
     }
   }
 
@@ -233,26 +223,25 @@ class AuthApi {
       return 'Çıkış yapıldı.';
     }
 
-    final uri = Uri.parse('${BaseApiService.baseUrl}/api/auth/logout');
+    try {
+      final response = await _client.postRaw(
+        '/api/auth/logout',
+        requireAuth: true,
+      );
 
-    final response = await http.post(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+      // Token'ları temizle (başarılı olsun ya da olmasın)
+      await _tokenService.clearTokens();
 
-    // Token'ları temizle (başarılı olsun ya da olmasın)
-    await _tokenService.clearTokens();
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return data['message'] as String? ?? 'Çıkış yapıldı.';
-    } else {
-      // Hata olsa bile token'ları temizledik, sadece mesaj döndür
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        return data['message'] as String? ?? 'Çıkış yapıldı.';
+      } else {
+        return 'Çıkış yapıldı.';
+      }
+    } catch (_) {
+      // Hata olsa bile token'ları temizle
+      await _tokenService.clearTokens();
       return 'Çıkış yapıldı.';
     }
   }
 }
-

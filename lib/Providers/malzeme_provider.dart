@@ -1,13 +1,15 @@
-import 'package:flutter/foundation.dart';
+  import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
-import 'package:elde_tarif/apiservice.dart';
+import 'package:elde_tarif/apiservice/malzeme_api.dart';
+import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/malzeme.dart';
 
 /// Malzeme verilerini yöneten sınıf.
 /// Tüm listeyi API'den çeker, arama ve tür filtrelerini uygular.
 class MalzemeProvider extends ChangeNotifier {
-  final ApiService api;
-  MalzemeProvider(this.api);
+  final MalzemeApi _malzemeApi;
+
+  MalzemeProvider() : _malzemeApi = MalzemeApi(ApiClient());
 
   // --- DURUM (STATE) ALANLARI ---
   bool yukleniyor = false; // veriler yükleniyor mu?
@@ -78,7 +80,7 @@ class MalzemeProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _tumMalzemeler = await api.fetchMalzemeler();
+      _tumMalzemeler = await _malzemeApi.fetchMalzemeler();
     } catch (e) {
       hata = e.toString();
     } finally {
@@ -94,7 +96,7 @@ class MalzemeProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _tumMalzemeler = await api.fetchMalzemeler();
+      _tumMalzemeler = await _malzemeApi.fetchMalzemeler();
     } catch (e) {
       hata = e.toString();
     } finally {

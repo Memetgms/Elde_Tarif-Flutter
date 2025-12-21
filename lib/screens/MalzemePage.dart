@@ -1,4 +1,3 @@
-import 'package:elde_tarif/apiservice.dart';
 import 'package:elde_tarif/screens/tarif_oneri_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
