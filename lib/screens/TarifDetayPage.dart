@@ -5,18 +5,14 @@ import 'dart:convert';
 
 import 'package:elde_tarif/Providers/tarif_detay_provider.dart';
 import 'package:elde_tarif/Providers/favorites_provider.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/models/yorum.dart';
 import 'package:elde_tarif/widgets/custom_toast.dart';
+import 'package:elde_tarif/apiservice/gunluk_api.dart';
+import 'package:elde_tarif/theme/app_theme.dart';
 
-class AppTheme {
-  static const primary = Color(0xFF3B82F6);
-  static const primaryDark = Color(0xFF2563EB);
-  static const surfaceSoft = Color(0xFFF1F5F9);
-  static const border = Color(0xFFE2E8F0);
-  static const textMuted = Color(0xFF64748B);
-}
+
 
 class TarifDetayPage extends StatefulWidget {
   final int tarifId;
@@ -29,15 +25,16 @@ class TarifDetayPage extends StatefulWidget {
 class _TarifDetayPageState extends State<TarifDetayPage>
     with SingleTickerProviderStateMixin {
   late TabController _tab;
-  final ApiClient _apiClient = ApiClient();
+  late final GunlukApi _gunlukApi;
 
-  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
+  String getImageUrl(String imagePath) => ApiConfig.getImageUrl(imagePath);
   String? _currentUserId;
   bool _isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
+    _gunlukApi = GunlukApi();
     _tab = TabController(length: 3, vsync: this);
     _checkAuth();
 
@@ -94,6 +91,90 @@ class _TarifDetayPageState extends State<TarifDetayPage>
     return text.trim();
   }
 
+
+  Future<void> _showAddToMealSheet() async {
+    if (!_isLoggedIn) {
+      if (mounted) CustomToast.error(context, "Öğün eklemek için giriş yapmalısınız");
+      return;
+    }
+
+    final meals = [
+      {"name": "Kahvaltı", "icon": Icons.wb_sunny_outlined, "color": Colors.orange},
+      {"name": "Öğle", "icon": Icons.wb_sunny, "color": Colors.amber},
+      {"name": "Akşam", "icon": Icons.nights_stay_outlined, "color": Colors.indigo},
+      {"name": "Ara Öğün", "icon": Icons.coffee_outlined, "color": Colors.brown},
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: [
+                 const Text("Hangi öğüne eklensin?", style: TextStyle(
+                   fontSize: 18, fontWeight: FontWeight.bold
+                 )),
+                 IconButton(
+                   icon: const Icon(Icons.close),
+                   onPressed: () => Navigator.pop(ctx),
+                 )
+               ],
+             ),
+             const SizedBox(height: 16),
+             ...meals.map((m) => Container(
+               margin: const EdgeInsets.only(bottom: 12),
+               child: ListTile(
+                 shape: RoundedRectangleBorder(
+                   borderRadius: BorderRadius.circular(12),
+                   side: BorderSide(color: AppTheme.border),
+                 ),
+                 tileColor: AppTheme.surfaceSoft,
+                 title: Text(m['name'] as String, style: const TextStyle(fontWeight: FontWeight.w600)),
+                 leading: Container(
+                   padding: const EdgeInsets.all(8),
+                   decoration: BoxDecoration(
+                     color: (m['color'] as Color).withValues(alpha: 0.1),
+                     borderRadius: BorderRadius.circular(8),
+                   ),
+                   child: Icon(m['icon'] as IconData, color: m['color'] as Color),
+                 ),
+                 trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppTheme.textMuted),
+                 onTap: () async {
+                   Navigator.pop(ctx);
+                   await _addToMeal(m['name'] as String);
+                 },
+               ),
+             )),
+             const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addToMeal(String mealType) async {
+    try {
+      await _gunlukApi.ogunEkle(ogunTipi: mealType, tarifId: widget.tarifId);
+      if (mounted) {
+         CustomToast.success(context, "$mealType öğününe eklendi");
+         // Opsiyonel: Kullanıcıyı günlük sayfasına yönlendirebilirsiniz veya sadece bilgilendirme yapabilirsiniz.
+         // Navigator.pop(context, true); // Eğer önceki sayfaya dönmek isterseniz.
+      }
+    } catch (e) {
+      if (mounted) CustomToast.error(context, "Hata: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -140,6 +221,19 @@ class _TarifDetayPageState extends State<TarifDetayPage>
                   ),
                 ),
                 actions: [
+                  // Öğün Ekle Butonu
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.white70,
+                      child: IconButton(
+                        icon: const Icon(Icons.playlist_add, color: Colors.black87),
+                        tooltip: "Günlüğe Ekle",
+                        onPressed: _showAddToMealSheet,
+                      ),
+                    ),
+                  ),
+
                   Consumer<FavoritesProvider>(
                     builder: (context, favoritesProvider, _) {
                       final isFavorite = favoritesProvider.isFavorite(widget.tarifId);

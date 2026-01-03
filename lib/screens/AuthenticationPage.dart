@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:elde_tarif/apiservice/auth_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
 import 'package:elde_tarif/screens/HomePage.dart';
@@ -17,7 +17,7 @@ class AuthenticationPage extends StatefulWidget {
 }
 
 class _AuthenticationPageState extends State<AuthenticationPage> {
-  final AuthApi _authApi = AuthApi(ApiClient(), TokenService());
+  final AuthApi _authApi = AuthApi(TokenService());
   final _formKey = GlobalKey<FormState>();
 
   bool _isLogin = true;

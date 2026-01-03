@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/apiservice/favori_api.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/widgets/custom_toast.dart';
@@ -10,7 +9,7 @@ class FavoritesProvider extends ChangeNotifier {
   final TokenService _tokenService = TokenService();
 
   FavoritesProvider()
-      : _favoriApi = FavoriApi(ApiClient());
+      : _favoriApi = FavoriApi();
 
   Set<int> get favoriteTarifIds => Set.unmodifiable(_favoriteTarifIds);
 
@@ -85,4 +84,3 @@ class FavoritesProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

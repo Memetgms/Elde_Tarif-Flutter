@@ -1,17 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/sef_detay_provider.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
+import 'package:elde_tarif/theme/app_theme.dart';
 
-// Tema renkleri (MalzemePage'den)
-class AppTheme {
-  static const primary = Color(0xFF3B82F6); // blue-500
-  static const primaryDark = Color(0xFF2563EB); // blue-600
-  static const surfaceSoft = Color(0xFFF1F5F9); // slate-50
-  static const border = Color(0xFFE2E8F0); // slate-200
-  static const textMuted = Color(0xFF64748B); // slate-500
-}
+
 
 class SefDetayPage extends StatefulWidget {
   final int sefId;
@@ -37,7 +31,7 @@ class _SefDetayPageState extends State<SefDetayPage> {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
-    return '${ApiClient.baseUrl}$imagePath';
+    return '${ApiConfig.baseUrl}$imagePath';
   }
 
   @override

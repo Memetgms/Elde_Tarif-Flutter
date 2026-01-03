@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:elde_tarif/apiservice/auth_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
 import 'package:elde_tarif/widgets/custom_toast.dart';
@@ -17,7 +17,7 @@ class EmailVerificationPage extends StatefulWidget {
 }
 
 class _EmailVerificationPageState extends State<EmailVerificationPage> {
-  final AuthApi _authApi = AuthApi(ApiClient(), TokenService());
+  final AuthApi _authApi = AuthApi(TokenService());
   final _codeController = TextEditingController();
 
   bool _loading = false;

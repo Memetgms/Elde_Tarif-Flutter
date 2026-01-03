@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/apiservice/malzeme_api.dart';
 import 'package:elde_tarif/models/tarif_oneri_sonuc.dart';
 import 'package:elde_tarif/Providers/favorites_provider.dart';
@@ -20,10 +20,9 @@ class TarifOneriPage extends StatefulWidget {
 
 class _TarifOneriPageState extends State<TarifOneriPage> {
   late Future<List<TarifOneriSonuc>> _future;
-  final ApiClient _apiClient = ApiClient();
-  final MalzemeApi _malzemeApi = MalzemeApi(ApiClient());
+  final MalzemeApi _malzemeApi = MalzemeApi();
 
-  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
+  String getImageUrl(String imagePath) => ApiConfig.getImageUrl(imagePath);
 
   static const _primary = Color(0xFF3B82F6);
   static const _primaryDark = Color(0xFF2563EB);

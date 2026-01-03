@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:elde_tarif/screens/MalzemePage.dart';
 import 'package:elde_tarif/screens/SearchPage.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
@@ -5,27 +6,16 @@ import 'package:elde_tarif/screens/SefDetayPage.dart';
 import 'package:elde_tarif/screens/AIPage.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
 import 'package:elde_tarif/Providers/favorites_provider.dart';
+import 'package:elde_tarif/screens/daily_tracker_page.dart';
 import 'package:flutter/material.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
+import 'package:elde_tarif/apiservice/auth_api.dart';
 import 'package:provider/provider.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
+import 'package:elde_tarif/screens/ProfilePage.dart';
+import 'package:elde_tarif/theme/app_theme.dart';
 
-// Tema renkleri (MalzemePage'den)
-class AppTheme {
-  static const primary = Color(0xFF3B82F6); // blue-500
-  static const primaryDark = Color(0xFF2563EB); // blue-600
-  static const surfaceSoft = Color(0xFFF1F5F9); // slate-50
-  static const border = Color(0xFFE2E8F0); // slate-200
-  static const textMuted = Color(0xFF64748B); // slate-500
-  
-  // Yeni eklenen modern tema renkleri
-  static const background = Color(0xFFF8FAFC); // slate-50 with more blue tint
-  static const cardBackground = Colors.white;
-  static const textPrimary = Color(0xFF1E293B); // slate-800
-  static const textSecondary = Color(0xFF64748B); // slate-500
-  static const accent = Color(0xFFFF9500); // Warm orange for highlights
-}
 
 class Homepage extends StatefulWidget {
   const Homepage({super.key});
@@ -41,8 +31,8 @@ class _HomepageState extends State<Homepage> {
     const _HomeTab(),
     const MalzemelerPage(),
     const AIPage(),
-    const _GunlukTab(),
-    const _ProfilTab(),
+    const DailyTrackerPage(),
+    const ProfilePage(),
   ];
 
   @override
@@ -118,21 +108,61 @@ class _HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<_HomeTab> {
-  final ApiClient _apiClient = ApiClient();
-  String? _token; // 👈 token state
+  final TokenService _tokenService = TokenService();
+  late final AuthApi _authApi;
+  String? _token;
+  Timer? _tokenCheckTimer;
 
-  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
+  String getImageUrl(String imagePath) => ApiConfig.getImageUrl(imagePath);
 
   @override
   void initState() {
     super.initState();
-    // Verileri yükle
+    _authApi = AuthApi(_tokenService);
     _loadToken();
     Future.microtask(() => context.read<HomeProvider>().verileriYukle());
+    _startTokenCheckTimer();
+  }
+
+  @override
+  void dispose() {
+    _tokenCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Periyodik token kontrolü (her 5 dakikada bir)
+  void _startTokenCheckTimer() {
+    _tokenCheckTimer = Timer.periodic(const Duration(minutes: 5), (timer) async {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      try {
+        final isExpired = await _tokenService.isAccessTokenExpired();
+        
+        if (isExpired) {
+          print('[HomePage] Token expire olmuş, yenileniyor...');
+          final tokens = await _tokenService.getTokens();
+          final refreshToken = tokens['refreshToken'];
+          
+          if (refreshToken != null && refreshToken.isNotEmpty) {
+            await _authApi.refreshToken(refreshToken);
+            await _loadToken(); // Token'ı yeniden yükle
+            print('[HomePage] Token başarıyla yenilendi');
+          } else {
+            print('[HomePage] Refresh token yok');
+            timer.cancel();
+          }
+        }
+      } catch (e) {
+        print('[HomePage] Token yenileme hatası: $e');
+      }
+    });
   }
 
   Future<void> _loadToken() async {
-    final tokens = await TokenService().getTokens();
+    final tokens = await _tokenService.getTokens();
     setState(() {
       _token = tokens['token'];
     });
@@ -384,16 +414,9 @@ class _HomeTabState extends State<_HomeTab> {
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                            color: AppTheme.primary.withOpacity(0.3),
+                                            color: AppTheme.border,
                                             width: 2,
                                           ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppTheme.primary.withOpacity(0.2),
-                                              blurRadius: 12,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
                                         ),
                                         child: sef.fotoUrl.isNotEmpty
                                             ? ClipOval(
@@ -502,13 +525,7 @@ class _HomeTabState extends State<_HomeTab> {
                                     Container(
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.1),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                        ],
+                                        border: Border.all(color: AppTheme.border),
                                       ),
                                       child: ClipRRect(
                                         borderRadius: BorderRadius.circular(16),
@@ -634,13 +651,7 @@ class _HomeTabState extends State<_HomeTab> {
                                                   Container(
                                                     decoration: BoxDecoration(
                                                       borderRadius: BorderRadius.circular(16),
-                                                      boxShadow: [
-                                                        BoxShadow(
-                                                          color: Colors.black.withOpacity(0.1),
-                                                          blurRadius: 12,
-                                                          offset: const Offset(0, 4),
-                                                        ),
-                                                      ],
+                                                      border: Border.all(color: AppTheme.border),
                                                     ),
                                                     child: ClipRRect(
                                                       borderRadius: BorderRadius.circular(16),
@@ -738,29 +749,3 @@ class _HomeTabState extends State<_HomeTab> {
 }
 
 
-class _GunlukTab extends StatelessWidget {
-  const _GunlukTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text('Günlük Sayfası')),
-    );
-  }
-}
-
-class _ProfilTab extends StatelessWidget {
-  const _ProfilTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return  Scaffold(
-      body: Center(child: TextButton(child: Text('GİRİŞ YAP ')
-      ,onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AuthenticationPage()),);},
-      ),
-      )
-    );
-  }
-}

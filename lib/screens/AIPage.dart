@@ -3,19 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:elde_tarif/Providers/ai_provider.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/screens/AuthenticationPage.dart';
+import 'package:elde_tarif/theme/app_theme.dart';
 
-class AppTheme {
-  static const primary = Color(0xFF3B82F6); // blue-500
-  static const primaryDark = Color(0xFF2563EB); // blue-600
-  static const surfaceSoft = Color(0xFFF1F5F9); // slate-50
-  static const border = Color(0xFFE2E8F0); // slate-200
-  static const textMuted = Color(0xFF64748B); // slate-500
-  static const background = Color(0xFFF8FAFC); // slate-50 with more blue tint
-  static const cardBackground = Colors.white;
-  static const textPrimary = Color(0xFF1E293B); // slate-800
-  static const textSecondary = Color(0xFF64748B); // slate-500
-  static const accent = Color(0xFFFF9500); // Warm orange for highlights
-}
 
 class AIPage extends StatefulWidget {
   const AIPage({super.key});

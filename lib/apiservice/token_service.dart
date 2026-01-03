@@ -84,8 +84,8 @@ class TokenService {
     // Şu anki zaman (seconds)
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     
-    // 60 saniye buffer ekle (network gecikmesi için)
-    return exp < (now + 60);
+    // 30 saniye buffer ekle (network gecikmesi için)
+    return exp < (now + 30);
   }
 
   /// Access token'ın expire olup olmadığını kontrol eder

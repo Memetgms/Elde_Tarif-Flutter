@@ -1,12 +1,12 @@
 import 'dart:convert';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:http/http.dart' as http;
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 
 class AiChatApi {
-  final ApiClient _client;
   final TokenService _tokenService;
 
-  AiChatApi(this._client, this._tokenService);
+  AiChatApi(this._tokenService);
 
   Future<String> sendMessage(String message) async {
     if (message.trim().isEmpty) {
@@ -21,15 +21,14 @@ class AiChatApi {
       throw Exception('Giriş yapmanız gerekiyor. Lütfen önce giriş yapın.');
     }
 
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/Chat');
+    final headers = await ApiConfig.getHeaders(includeAuth: true);
+    
     final requestBody = jsonEncode({
       'message': message,
     });
 
-    final response = await _client.postRaw(
-      '/api/Chat',
-      body: requestBody,
-      requireAuth: true,
-    );
+    final response = await http.post(uri, headers: headers, body: requestBody);
 
     // Debug için response bilgilerini logla
     if (response.statusCode != 200) {

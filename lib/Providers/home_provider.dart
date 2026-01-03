@@ -1,7 +1,6 @@
 import 'package:elde_tarif/apiservice/chef_api.dart';
 import 'package:elde_tarif/apiservice/tarif_api.dart';
 import 'package:elde_tarif/apiservice/malzeme_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/kategori.dart';
 import 'package:elde_tarif/models/sef.dart';
 import 'package:elde_tarif/models/tarifonizleme.dart';
@@ -13,9 +12,9 @@ class HomeProvider extends ChangeNotifier {
   final MalzemeApi _malzemeApi;
 
   HomeProvider() 
-      : _chefApi = ChefApi(ApiClient()),
-        _tarifApi = TarifApi(ApiClient()),
-        _malzemeApi = MalzemeApi(ApiClient());
+      : _chefApi = ChefApi(),
+        _tarifApi = TarifApi(),
+        _malzemeApi = MalzemeApi();
 
   bool _yukleniyor = false;
   String? _hata;
@@ -105,4 +104,3 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-

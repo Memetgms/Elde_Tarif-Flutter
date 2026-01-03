@@ -1,7 +1,6 @@
-  import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:collection/collection.dart';
 import 'package:elde_tarif/apiservice/malzeme_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/malzeme.dart';
 
 /// Malzeme verilerini yöneten sınıf.
@@ -9,7 +8,7 @@ import 'package:elde_tarif/models/malzeme.dart';
 class MalzemeProvider extends ChangeNotifier {
   final MalzemeApi _malzemeApi;
 
-  MalzemeProvider() : _malzemeApi = MalzemeApi(ApiClient());
+  MalzemeProvider() : _malzemeApi = MalzemeApi();
 
   // --- DURUM (STATE) ALANLARI ---
   bool yukleniyor = false; // veriler yükleniyor mu?

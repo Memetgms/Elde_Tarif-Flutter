@@ -1,23 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import 'package:elde_tarif/Providers/home_provider.dart';
 import 'package:elde_tarif/Providers/favorites_provider.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/models/tarifonizleme.dart';
 import 'package:elde_tarif/screens/TarifDetayPage.dart';
-import 'homepage.dart';
+import 'package:elde_tarif/theme/app_theme.dart';
 
-class AppTheme {
-  static const primary = Color(0xFF6366F1); // indigo-500
-  static const primaryDark = Color(0xFF4F46E5); // indigo-600
-  static const primaryLight = Color(0xFF818CF8); // indigo-400
-  static const surfaceSoft = Color(0xFFF8FAFC); // slate-50
-  static const border = Color(0xFFE2E8F0); // slate-200
-  static const textMuted = Color(0xFF64748B); // slate-500
-  static const accent = Color(0xFFEC4899); // pink-500
-  static const success = Color(0xFF10B981); // emerald-500
-}
 // Sıralama seçenekleri
 enum TarifSortOption {
   nameAsc,
@@ -46,9 +35,8 @@ class _SearchPageState extends State<SearchPage> {
   bool _showFilters = false; // To toggle filter visibility
 
   final TextEditingController _searchController = TextEditingController();
-  final ApiClient _apiClient = ApiClient();
 
-  String getImageUrl(String imagePath) => _apiClient.getImageUrl(imagePath);
+  String getImageUrl(String imagePath) => ApiConfig.getImageUrl(imagePath);
 
   @override
   void initState() {
@@ -335,7 +323,7 @@ class _SearchPageState extends State<SearchPage> {
                                         gradient: LinearGradient(
                                           colors: [
                                             AppTheme.primary,
-                                            AppTheme.primaryLight,
+                                            AppTheme.primary,
                                           ],
                                         ),
                                         borderRadius: BorderRadius.circular(10),
@@ -679,7 +667,7 @@ class _SearchPageState extends State<SearchPage> {
 
   // Modern tarif kartı builder metodu
   Widget _buildTarifCard(BuildContext context, TarifOnizleme tarif) {
-    final imageUrl = _apiClient.getImageUrl(tarif.kapakFotoUrl);
+    final imageUrl = ApiConfig.getImageUrl(tarif.kapakFotoUrl);
     return Consumer<FavoritesProvider>(
       builder: (context, favoritesProvider, _) {
         final isFavorite = favoritesProvider.isFavorite(tarif.id);
@@ -785,57 +773,64 @@ class _SearchPageState extends State<SearchPage> {
                     ),
                   ),
                 ),
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          tarif.baslik,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                  Expanded(
+                    flex: 3,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              tarif.baslik,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            if (tarif.toplamSure != null) ...[
-                              Icon(Icons.access_time, size: 14,
-                                  color: AppTheme.textMuted),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${tarif.toplamSure} dk',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textMuted,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                            ],
-                            if (tarif.porsiyonSayisi != null) ...[
-                              Icon(Icons.people_outline, size: 14,
-                                  color: AppTheme.textMuted),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${tarif.porsiyonSayisi} porsiyon',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppTheme.textMuted,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (tarif.toplamSure != null) ...[ 
+                                  Icon(Icons.access_time, size: 14,
+                                      color: AppTheme.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${tarif.toplamSure} dk',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textMuted,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                ],
+                                if (tarif.porsiyonSayisi != null) ...[
+                                  Icon(Icons.people_outline, size: 14,
+                                      color: AppTheme.textMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${tarif.porsiyonSayisi} p',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

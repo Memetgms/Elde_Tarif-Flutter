@@ -1,16 +1,14 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:elde_tarif/apiservice/api_client.dart';
+import 'package:elde_tarif/apiservice/api_config.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:elde_tarif/excepiton/emailexception.dart';
 import 'package:elde_tarif/models/auth_dto.dart';
-import 'package:elde_tarif/services/client_id_services.dart';
 
 class AuthApi {
-  final ApiClient _client;
   final TokenService _tokenService;
 
-  AuthApi(this._client, this._tokenService);
+  AuthApi(this._tokenService);
 
   // Hata mesajını parse eden helper metod
   String _parseErrorMessage(String responseBody) {
@@ -87,9 +85,13 @@ class AuthApi {
   }
 
   Future<AuthResponse> login(LoginDto dto) async {
-    final response = await _client.postRaw(
-      '/api/auth/login',
-      body: dto.toJson(),
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/login');
+    final headers = await ApiConfig.getHeaders();
+    
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(dto.toJson()),
     );
 
     if (response.statusCode == 200) {
@@ -124,9 +126,13 @@ class AuthApi {
 
   // Kayıt ol
   Future<RegisterResponse> register(RegisterDto dto) async {
-    final response = await _client.postRaw(
-      '/api/auth/register',
-      body: dto.toJson(),
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/register');
+    final headers = await ApiConfig.getHeaders();
+    
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(dto.toJson()),
     );
 
     if (response.statusCode == 200) {
@@ -143,9 +149,13 @@ class AuthApi {
 
   // Email doğrulama
   Future<String> confirmEmail(ConfirmEmailCodeDto dto) async {
-    final response = await _client.postRaw(
-      '/api/auth/confirm-email',
-      body: dto.toJson(),
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/confirm-email');
+    final headers = await ApiConfig.getHeaders();
+    
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(dto.toJson()),
     );
 
     if (response.statusCode == 200) {
@@ -162,9 +172,13 @@ class AuthApi {
 
   // Kod tekrar gönder
   Future<String> resendCode(ResendCodeDto dto) async {
-    final response = await _client.postRaw(
-      '/api/auth/resend-code',
-      body: dto.toJson(),
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/resend-code');
+    final headers = await ApiConfig.getHeaders();
+    
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: jsonEncode(dto.toJson()),
     );
 
     if (response.statusCode == 200) {
@@ -182,13 +196,8 @@ class AuthApi {
   // Refresh token ile yeni token al
   Future<AuthResponse> refreshToken(String refreshToken) async {
     // Backend direkt string bekliyor (JSON encode edilmeden)
-    // postRaw jsonEncode yapıyor, bu yüzden http.post kullanıyoruz
-    final uri = Uri.parse('${ApiClient.baseUrl}/api/auth/refresh-token');
-    final clientId = await ClientIdService.getOrCreate();
-    final headers = {
-      'Content-Type': 'application/json',
-      'X-Client-Id': clientId,
-    };
+    final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/refresh-token');
+    final headers = await ApiConfig.getHeaders();
     
     final response = await http.post(
       uri,
@@ -224,10 +233,10 @@ class AuthApi {
     }
 
     try {
-      final response = await _client.postRaw(
-        '/api/auth/logout',
-        requireAuth: true,
-      );
+      final uri = Uri.parse('${ApiConfig.baseUrl}/api/auth/logout');
+      final headers = await ApiConfig.getHeaders(includeAuth: true);
+      
+      final response = await http.post(uri, headers: headers);
 
       // Token'ları temizle (başarılı olsun ya da olmasın)
       await _tokenService.clearTokens();

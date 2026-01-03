@@ -2,6 +2,7 @@ import 'package:elde_tarif/Providers/tarif_detay_provider.dart';
 import 'package:elde_tarif/Providers/home_provider.dart';
 import 'package:elde_tarif/Providers/ai_provider.dart';
 import 'package:elde_tarif/Providers/favorites_provider.dart';
+import 'package:elde_tarif/screens/HomePage.dart';
 import 'package:elde_tarif/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';

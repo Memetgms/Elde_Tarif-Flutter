@@ -1,6 +1,5 @@
 import 'package:elde_tarif/apiservice/tarif_api.dart';
 import 'package:elde_tarif/apiservice/yorum_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/models/tarif_detay.dart';
 import 'package:elde_tarif/models/yorum.dart';
 import 'package:flutter/foundation.dart';
@@ -10,8 +9,8 @@ class TarifDetayProvider extends ChangeNotifier {
   final YorumApi _yorumApi;
 
   TarifDetayProvider() 
-      : _tarifApi = TarifApi(ApiClient()),
-        _yorumApi = YorumApi(ApiClient());
+      : _tarifApi = TarifApi(),
+        _yorumApi = YorumApi();
 
   bool yukleniyor = false;
   String? hata;

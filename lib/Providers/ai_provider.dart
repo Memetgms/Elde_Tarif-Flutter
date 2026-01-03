@@ -1,5 +1,4 @@
 import 'package:elde_tarif/apiservice/aichat_api.dart';
-import 'package:elde_tarif/apiservice/api_client.dart';
 import 'package:elde_tarif/apiservice/token_service.dart';
 import 'package:flutter/foundation.dart';
 
@@ -18,7 +17,7 @@ class ChatMessage {
 class AiProvider extends ChangeNotifier {
   final AiChatApi _aiChatApi;
 
-  AiProvider() : _aiChatApi = AiChatApi(ApiClient(), TokenService());
+  AiProvider() : _aiChatApi = AiChatApi(TokenService());
 
   List<ChatMessage> _messages = [];
   bool _isLoading = false;
@@ -84,5 +83,3 @@ class AiProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-
-
